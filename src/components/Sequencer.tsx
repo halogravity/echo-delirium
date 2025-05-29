@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
+import { Scale } from 'tonal';
 import { Play, Square, Save, Upload, Download, Settings, Plus, Trash2, Music2, Volume2, AudioWaveform as Waveform, AlertCircle, RefreshCw, Loader2, Headphones, Volume, VolumeX, Filter, Clock, Waves, ChevronDown, ChevronRight } from 'lucide-react';
 import BassTrack, { BassTrackRef } from './BassTrack';
 import PolyTrack, { PolyTrackRef } from './PolyTrack';
@@ -110,7 +111,6 @@ const Sequencer: React.FC = () => {
 
         await loadUserContent();
 
-        // Get default samples from Supabase
         const { data: defaultSamples, error } = await supabase
           .from('default_samples')
           .select('*')
@@ -501,7 +501,7 @@ const Sequencer: React.FC = () => {
       const updatedTrack = {
         ...trackToUpdate,
         samplePath: storagePath,
-        name: trackToUpdate.name === name ? name : trackToUpdate.name
+        name
       };
 
       setTracks(prev => prev.map(t => 
@@ -834,7 +834,7 @@ const Sequencer: React.FC = () => {
                     }`}>
                       <div className="flex items-center gap-2">
                         {track.loadProgress.status === 'loading' && (
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Loader2  className="w-3 h-3 animate-spin" />
                         )}
                         {track.loadProgress.message}
                       </div>
