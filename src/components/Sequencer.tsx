@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import { Scale } from 'tonal';
-import { Play, Square, Save, Upload, Download, Settings, Plus, Trash2, Music2, Volume2, AudioWaveform as Waveform, AlertCircle, RefreshCw, Loader2, Headphones, Volume, VolumeX, Filter, Clock, Waves, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
+import { Play, Square, Save, Upload, Download, Settings, Plus, Trash2, Music2, Volume2, AudioWaveform as Waveform, AlertCircle, RefreshCw, Loader2, Headphones, Volume, VolumeX, Filter, Clock, Waves, ChevronDown, ChevronRight } from 'lucide-react';
 import BassTrack, { BassTrackRef } from './BassTrack';
 import PolyTrack, { PolyTrackRef } from './PolyTrack';
 import { supabase } from '../lib/supabase';
@@ -726,14 +726,6 @@ const Sequencer: React.FC<SequencerProps> = ({ isManualOpen, onManualClose }) =>
                   {Math.round(swing * 100)}%
                 </span>
               </div>
-
-              <button
-                onClick={() => setIsManualOpen(true)}
-                className="flex items-center gap-2 px-3 py-1 text-xs font-mono text-red-500/70 hover:text-red-500 transition-colors border border-red-900/20 hover:border-red-900/40"
-              >
-                <BookOpen className="w-4 h-4" />
-                Manual
-              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -832,7 +824,6 @@ const Sequencer: React.FC<SequencerProps> = ({ isManualOpen, onManualClose }) =>
                       title={track.gated ? 'Disable Gate' : 'Enable Gate'}
                     >
                       <Music2 className="w-4 h-4" />
-                    
                     </button>
                     <button
                       onClick={() => removeTrack(track.id)}
