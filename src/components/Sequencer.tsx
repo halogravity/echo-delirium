@@ -828,6 +828,7 @@ const Sequencer: React.FC = () => {
                       title={track.gated ? 'Disable Gate' : 'Enable Gate'}
                     >
                       <Music2 className="w-4 h-4" />
+                    
                     </button>
                     <button
                       onClick={() => removeTrack(track.id)}
