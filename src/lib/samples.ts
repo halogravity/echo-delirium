@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import retry from 'retry';
 
 export interface Sample {
   id: string;
@@ -87,17 +88,39 @@ export async function getSampleUrl(path: string): Promise<string | null> {
       return `/samples/${path}`;
     }
 
-    // Get signed URL for user samples
-    const { data, error } = await supabase.storage
-      .from('echobucket')
-      .createSignedUrl(path, 3600); // 1 hour expiry
+    // Create retry operation
+    const operation = retry.operation({
+      retries: 3,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 5000
+    });
 
-    if (error) {
-      console.error('Error getting signed URL:', error);
-      return null;
-    }
+    return new Promise((resolve, reject) => {
+      operation.attempt(async (currentAttempt) => {
+        try {
+          // Get signed URL for user samples
+          const { data, error } = await supabase.storage
+            .from('echobucket')
+            .createSignedUrl(path, 3600); // 1 hour expiry
 
-    return data.signedUrl;
+          if (error) {
+            if (operation.retry(error)) {
+              return;
+            }
+            reject(operation.mainError());
+            return;
+          }
+
+          resolve(data.signedUrl);
+        } catch (error) {
+          if (operation.retry(error as Error)) {
+            return;
+          }
+          reject(operation.mainError());
+        }
+      });
+    });
   } catch (error) {
     console.error('Error getting sample URL:', error);
     return null;
@@ -120,37 +143,62 @@ export async function loadSamples(): Promise<Sample[]> {
       throw new Error('User not authenticated');
     }
 
-    // Get user samples
-    const { data: userSamples, error } = await supabase
-      .from('samples')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    // Create retry operation
+    const operation = retry.operation({
+      retries: 3,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 5000
+    });
 
-    if (error) {
-      console.error('Error loading user samples:', error);
-      return [];
-    }
+    return new Promise((resolve, reject) => {
+      operation.attempt(async (currentAttempt) => {
+        try {
+          // Get user samples
+          const { data: userSamples, error } = await supabase
+            .from('samples')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-    // Get default samples
-    const { data: defaultSamples, error: defaultError } = await supabase
-      .from('default_samples')
-      .select('*')
-      .order('created_at', { ascending: false });
+          if (error) {
+            if (operation.retry(error)) {
+              return;
+            }
+            reject(operation.mainError());
+            return;
+          }
 
-    if (defaultError) {
-      console.error('Error loading default samples:', defaultError);
-      return userSamples || [];
-    }
+          // Get default samples
+          const { data: defaultSamples, error: defaultError } = await supabase
+            .from('default_samples')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-    // Combine and return all samples
-    return [
-      ...(userSamples || []),
-      ...(defaultSamples || []).map(sample => ({
-        ...sample,
-        user_id: null // Mark as default sample
-      }))
-    ];
+          if (defaultError) {
+            if (operation.retry(defaultError)) {
+              return;
+            }
+            reject(operation.mainError());
+            return;
+          }
+
+          // Combine and return all samples
+          resolve([
+            ...(userSamples || []),
+            ...(defaultSamples || []).map(sample => ({
+              ...sample,
+              user_id: null // Mark as default sample
+            }))
+          ]);
+        } catch (error) {
+          if (operation.retry(error as Error)) {
+            return;
+          }
+          reject(operation.mainError());
+        }
+      });
+    });
   } catch (error) {
     console.error('Error in loadSamples:', error);
     return [];
@@ -173,42 +221,75 @@ export async function deleteSample(id: string): Promise<boolean> {
       throw new Error('User not authenticated');
     }
 
-    // Get the sample to find its storage path
-    const { data: sample, error: fetchError } = await supabase
-      .from('samples')
-      .select('storage_path')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single();
+    // Create retry operation
+    const operation = retry.operation({
+      retries: 3,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 5000
+    });
 
-    if (fetchError || !sample) {
-      console.error('Error fetching sample:', fetchError);
-      return false;
-    }
+    return new Promise((resolve, reject) => {
+      operation.attempt(async (currentAttempt) => {
+        try {
+          // Get the sample to find its storage path
+          const { data: sample, error: fetchError } = await supabase
+            .from('samples')
+            .select('storage_path')
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .single();
 
-    // Delete from storage
-    const { error: storageError } = await supabase.storage
-      .from('echobucket')
-      .remove([sample.storage_path]);
+          if (fetchError) {
+            if (operation.retry(fetchError)) {
+              return;
+            }
+            reject(operation.mainError());
+            return;
+          }
 
-    if (storageError) {
-      console.error('Error deleting sample from storage:', storageError);
-      return false;
-    }
+          if (!sample) {
+            resolve(false);
+            return;
+          }
 
-    // Delete from database
-    const { error: dbError } = await supabase
-      .from('samples')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+          // Delete from storage
+          const { error: storageError } = await supabase.storage
+            .from('echobucket')
+            .remove([sample.storage_path]);
 
-    if (dbError) {
-      console.error('Error deleting sample metadata:', dbError);
-      return false;
-    }
+          if (storageError) {
+            if (operation.retry(storageError)) {
+              return;
+            }
+            reject(operation.mainError());
+            return;
+          }
 
-    return true;
+          // Delete from database
+          const { error: dbError } = await supabase
+            .from('samples')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+          if (dbError) {
+            if (operation.retry(dbError)) {
+              return;
+            }
+            reject(operation.mainError());
+            return;
+          }
+
+          resolve(true);
+        } catch (error) {
+          if (operation.retry(error as Error)) {
+            return;
+          }
+          reject(operation.mainError());
+        }
+      });
+    });
   } catch (error) {
     console.error('Error in deleteSample:', error);
     return false;
