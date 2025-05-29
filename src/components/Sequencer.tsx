@@ -200,7 +200,6 @@ const Sequencer: React.FC = () => {
 
       let urlToLoad = track.samplePath;
 
-      // If it's a local sample from the /samples directory, read the URL from the file
       if (track.samplePath.startsWith('/samples/')) {
         try {
           const response = await fetch(track.samplePath);
@@ -211,11 +210,10 @@ const Sequencer: React.FC = () => {
           throw new Error('Failed to load local sample');
         }
       } else {
-        // For user samples, get the URL from storage
-        urlToLoad = await getSampleUrl(track.samplePath);
+        const url = await getSampleUrl(track.samplePath);
+        if (!url) throw new Error('Failed to get sample URL');
+        urlToLoad = url;
       }
-
-      if (!urlToLoad) throw new Error('Failed to get sample URL');
 
       const filter = new Tone.Filter({
         frequency: track.effects.filter,
