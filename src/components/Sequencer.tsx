@@ -116,7 +116,7 @@ const Sequencer: React.FC = () => {
             name: 'Kick',
             type: 'drum',
             pattern: Array(stepAmount).fill(false),
-            samplePath: '/samples/kick.mp3',
+            samplePath: '/samples/kick.wav',
             volume: 0,
             pan: 0,
             effects: { filter: 20000, resonance: 1, delay: 0, reverb: 0 },
@@ -205,7 +205,7 @@ const Sequencer: React.FC = () => {
         try {
           const response = await fetch(track.samplePath);
           if (!response.ok) throw new Error('Failed to load sample file');
-          urlToLoad = await response.text();
+          urlToLoad = track.samplePath;
         } catch (error) {
           console.error('Error loading local sample:', error);
           throw new Error('Failed to load local sample');
