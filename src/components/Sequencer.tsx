@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import { Scale } from 'tonal';
-import { Play, Square, Save, Upload, Download, Settings, Plus, Trash2, Music2, Volume2, AudioWaveform as Waveform, AlertCircle, RefreshCw, Loader2, Headphones, Volume, VolumeX, Filter, Clock, Waves, ChevronDown, ChevronRight } from 'lucide-react';
+import { Play, Square, Save, Upload, Download, Settings, Plus, Trash2, Music2, Volume2, AudioWaveform as Waveform, AlertCircle, RefreshCw, Loader2, Headphones, Volume, VolumeX, Filter, Clock, Waves, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 import BassTrack, { BassTrackRef } from './BassTrack';
 import PolyTrack, { PolyTrackRef } from './PolyTrack';
 import { supabase } from '../lib/supabase';
 import { getSampleUrl } from '../lib/samples';
+import Manual from './Manual';
 
 interface Track {
   id: string;
@@ -66,6 +67,7 @@ const Sequencer: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [loadingSamples, setLoadingSamples] = useState<{ [key: string]: boolean }>({});
   const [stepAmount, setStepAmount] = useState<StepAmount>(16);
+  const [isManualOpen, setIsManualOpen] = useState(false);
 
   const players = useRef(new Map<string, Tone.Player>());
   const filters = useRef(new Map<string, Tone.Filter>());
@@ -643,6 +645,8 @@ const Sequencer: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black/40 relative">
+      <Manual isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+      
       <div className="fixed top-16 left-0 right-0 z-40 bg-black/95 border-b border-red-900/20 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex flex-col gap-4">
@@ -718,6 +722,14 @@ const Sequencer: React.FC = () => {
                   {Math.round(swing * 100)}%
                 </span>
               </div>
+
+              <button
+                onClick={() => setIsManualOpen(true)}
+                className="flex items-center gap-2 px-3 py-1 text-xs font-mono text-red-500/70 hover:text-red-500 transition-colors border border-red-900/20 hover:border-red-900/40"
+              >
+                <BookOpen className="w-4 h-4" />
+                Manual
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
