@@ -698,7 +698,8 @@ const Sequencer: React.FC = () => {
                 <span className="text-red-500/70 text-sm font-mono">Steps:</span>
                 <select
                   value={stepAmount}
-                  onChange={(e) => handleStepAmountChange(parseInt(e.target.value))}
+                  onChange={(e) => handleStepAmount
+Change(parseInt(e.target.value))}
                   className="bg-black/30 border border-red-900/30 text-red-200 px-2 py-1 text-sm font-mono"
                 >
                   {STEP_OPTIONS.map(amount => (
@@ -828,7 +829,6 @@ const Sequencer: React.FC = () => {
                       title={track.gated ? 'Disable Gate' : 'Enable Gate'}
                     >
                       <Music2 className="w-4 h-4" />
-                    
                     </button>
                     <button
                       onClick={() => removeTrack(track.id)}
