@@ -20,9 +20,20 @@ const Manual: React.FC<ManualProps> = ({ isOpen, onClose }) => {
         </button>
 
         <div className="space-y-8">
-          <div className="flex items-center gap-4">
-            <Skull className="w-8 h-8 text-red-500" />
-            <h2 className="text-xl font-thin text-red-500 tracking-wider">Echo Delirium Manual</h2>
+          {/* App Description */}
+          <div className="border-b border-red-900/20 pb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Skull className="w-8 h-8 text-red-500" />
+              <h2 className="text-xl font-thin text-red-500 tracking-wider">Echo Delirium</h2>
+            </div>
+            <p className="text-red-300/70 text-lg mb-4">
+              A surreal audio experience that transforms ambient sounds into musical instruments using AI-powered sound processing and synthesis.
+            </p>
+            <p className="text-red-300/70">
+              Echo Delirium combines neural audio processing, granular synthesis, and spectral manipulation to create 
+              otherworldly soundscapes from your recordings. Use the nightmare engine to induce audio hallucinations,
+              apply various musical style influences, and sequence your transformed sounds into rhythmic patterns.
+            </p>
           </div>
 
           <div className="space-y-6">
