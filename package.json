@@ -24,12 +24,12 @@
     "ndarray-resample": "^1.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "retry": "^0.13.1",
     "three": "^0.162.0",
     "tone": "^14.7.77",
     "tonal": "^5.2.0",
     "typedarray-pool": "^1.2.0",
-    "wavesurfer.js": "^7.7.3",
-    "retry": "^0.13.1"
+    "wavesurfer.js": "^7.7.3"
   },
   "devDependencies": {
     "@types/ndarray": "^1.0.14",
