@@ -198,11 +198,24 @@ const Sequencer: React.FC = () => {
         } : t
       ));
 
-      const url = track.samplePath.startsWith('/samples/')
-        ? track.samplePath
-        : await getSampleUrl(track.samplePath);
+      let urlToLoad = track.samplePath;
 
-      if (!url) throw new Error('Failed to get sample URL');
+      // If it's a local sample from the /samples directory, fetch its content first
+      if (track.samplePath.startsWith('/samples/')) {
+        try {
+          const response = await fetch(track.samplePath);
+          if (!response.ok) throw new Error('Failed to load sample file');
+          urlToLoad = await response.text();
+        } catch (error) {
+          console.error('Error loading local sample:', error);
+          throw new Error('Failed to load local sample');
+        }
+      } else {
+        // For user samples, get the URL from storage
+        urlToLoad = await getSampleUrl(track.samplePath);
+      }
+
+      if (!urlToLoad) throw new Error('Failed to get sample URL');
 
       const filter = new Tone.Filter({
         frequency: track.effects.filter,
@@ -230,7 +243,7 @@ const Sequencer: React.FC = () => {
       reverbs.current.set(track.id, reverb);
 
       const player = new Tone.Player({
-        url,
+        url: urlToLoad,
         onload: () => {
           setTracks(prev => prev.map(t => 
             t.id === track.id ? {
@@ -824,7 +837,7 @@ const Sequencer: React.FC = () => {
                   {track.loadProgress && (
                     <div className={`mb-4 p-2 text-xs font-mono ${
                       track.loadProgress.status === 'failed'
-                        ? 'bg-red-900/20 border border-red-500/30 text-red-500'
+                        ? 'bg-red-900/20  border border-red-500/30 text-red-500'
                         : 'bg-red-900/10 border border-red-500/20 text-red-500/70'
                     }`}>
                       <div className="flex items-center gap-2">
