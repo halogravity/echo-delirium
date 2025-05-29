@@ -110,13 +110,21 @@ const Sequencer: React.FC = () => {
 
         await loadUserContent();
 
+        // Get default samples from Supabase
+        const { data: defaultSamples, error } = await supabase
+          .from('default_samples')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
         const defaultTracks: Track[] = [
           {
             id: 'kick',
             name: 'Kick',
             type: 'drum',
             pattern: Array(stepAmount).fill(false),
-            samplePath: '/samples/kick.wav',
+            samplePath: defaultSamples.find(s => s.type === 'kick')?.storage_path || '',
             volume: 0,
             pan: 0,
             effects: { filter: 20000, resonance: 1, delay: 0, reverb: 0 },
@@ -198,22 +206,8 @@ const Sequencer: React.FC = () => {
         } : t
       ));
 
-      let urlToLoad = track.samplePath;
-
-      if (track.samplePath.startsWith('/samples/')) {
-        try {
-          const response = await fetch(track.samplePath);
-          if (!response.ok) throw new Error('Failed to load sample file');
-          urlToLoad = await response.text();
-        } catch (error) {
-          console.error('Error loading local sample:', error);
-          throw new Error('Failed to load local sample');
-        }
-      } else {
-        const url = await getSampleUrl(track.samplePath);
-        if (!url) throw new Error('Failed to get sample URL');
-        urlToLoad = url;
-      }
+      const url = await getSampleUrl(track.samplePath);
+      if (!url) throw new Error('Failed to get sample URL');
 
       const filter = new Tone.Filter({
         frequency: track.effects.filter,
@@ -241,7 +235,7 @@ const Sequencer: React.FC = () => {
       reverbs.current.set(track.id, reverb);
 
       const player = new Tone.Player({
-        url: urlToLoad,
+        url,
         onload: () => {
           setTracks(prev => prev.map(t => 
             t.id === track.id ? {
@@ -835,7 +829,7 @@ const Sequencer: React.FC = () => {
                   {track.loadProgress && (
                     <div className={`mb-4 p-2 text-xs font-mono ${
                       track.loadProgress.status === 'failed'
-                        ? 'bg-red-900/20  border border-red-500/30 text-red-500'
+                        ? 'bg-red-900/20 border border-red-500/30 text-red-500'
                         : 'bg-red-900/10 border border-red-500/20 text-red-500/70'
                     }`}>
                       <div className="flex items-center gap-2">
