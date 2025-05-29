@@ -185,7 +185,7 @@ function App() {
               {currentPage === 'recorder' ? (
                 <AudioRecorder isManualOpen={isManualOpen} onManualClose={() => setIsManualOpen(false)} />
               ) : (
-                <Sequencer />
+                <Sequencer isManualOpen={isManualOpen} onManualClose={() => setIsManualOpen(false)} />
               )}
             </ErrorBoundary>
           </div>
