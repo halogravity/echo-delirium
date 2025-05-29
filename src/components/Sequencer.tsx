@@ -1,4 +1,4 @@
-{`import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import { Play, Square, Save, Upload, Download, Settings, Plus, Trash2, Music2, Volume2, AudioWaveform as Waveform, AlertCircle, RefreshCw, Loader2, Headphones, Volume, VolumeX, Filter, Clock, Waves, ChevronDown, ChevronRight } from 'lucide-react';
 import BassTrack, { BassTrackRef } from './BassTrack';
@@ -258,7 +258,7 @@ const Sequencer: React.FC = () => {
           ));
         },
         onerror: (error) => {
-          console.error(\`Error loading sample for \${track.name}:\`, error);
+          console.error(`Error loading sample for ${track.name}:`, error);
           if (urlToLoad.startsWith('blob:')) {
             URL.revokeObjectURL(urlToLoad);
           }
@@ -438,10 +438,10 @@ const Sequencer: React.FC = () => {
   };
 
   const handleAddTrack = (type: Track['type']) => {
-    const id = \`track-\${Date.now()}\`;
+    const id = `track-${Date.now()}`;
     const newTrack: Track = {
       id,
-      name: type === 'poly' ? 'Poly Synth' : \`Track \${tracks.length + 1}\`,
+      name: type === 'poly' ? 'Poly Synth' : `Track ${tracks.length + 1}`,
       type,
       pattern: Array(stepAmount).fill(false),
       volume: 0,
@@ -552,8 +552,8 @@ const Sequencer: React.FC = () => {
     try {
       setIsUploading(true);
 
-      const fileName = \`\${Date.now()}-\${file.name}\`;
-      const filePath = \`samples/\${(await supabase.auth.getUser()).data.user?.id}/\${fileName}\`;
+      const fileName = `${Date.now()}-${file.name}`;
+      const filePath = `samples/${(await supabase.auth.getUser()).data.user?.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('echobucket')
@@ -665,15 +665,15 @@ const Sequencer: React.FC = () => {
               <button
                 onClick={startSequencer}
                 disabled={isLoading}
-                className={\`
+                className={`
                   flex items-center gap-2 px-4 py-2 transition-colors relative overflow-hidden
-                  \${isLoading
+                  ${isLoading
                     ? 'bg-red-900/20 border-red-900/30 text-red-500/50 cursor-not-allowed'
                     : isPlaying
                       ? 'bg-red-900/40 border-red-600/50 text-red-500'
                       : 'bg-red-900/20 border border-red-900/50 text-red-500 hover:bg-red-900/30'
                   }
-                \`}
+                `}
               >
                 {isLoading ? (
                   <>
@@ -801,35 +801,34 @@ const Sequencer: React.FC = () => {
                   <div className="flex items-center gap-2 mb-4">
                     <button
                       onClick={() => toggleTrackMute(track.id)}
-                      className={\`p-1 transition-colors \${
+                      className={`p-1 transition-colors ${
                         track.muted
                           ? 'text-red-500'
                           : 'text-red-500/50 hover:text-red-500'
-                      }\`}
+                      }`}
                       title={track.muted ? 'Unmute' : 'Mute'}
                     >
                       {track.muted ? <VolumeX className="w-4 h-4" /> : <Volume className="w-4 h-4" />}
                     </button>
                     <button
                       onClick={() => toggleTrackSolo(track.id)}
-                      className={\`p-1 transition-colors \${
+                      className={`p-1 transition-colors ${
                         track.soloed
                           ? 'text-red-500'
                           : 'text-red-500/50 hover:text-red-500'
-                      }\`}
+                      }`}
                       title={track.soloed ? 'Unsolo' : 'Solo'}
                     >
                       <Headphones className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => toggleTrackGate(track.id)}
-                      className={\`p-1 transition-colors \${
+                      className={`p-1 transition-colors ${
                         track.gated
                           ? 'text-red-500'
                           : 'text-red-500/50 hover:text-red-500'
-                      }\`}
+                      }`}
                       title={track.gated ? 'Disable Gate' : 'Enable Gate'}
-                
                     >
                       <Music2 className="w-4 h-4" />
                     </button>
@@ -843,11 +842,11 @@ const Sequencer: React.FC = () => {
                   </div>
 
                   {track.loadProgress && (
-                    <div className={\`mb-4 p-2 text-xs font-mono \${
+                    <div className={`mb-4 p-2 text-xs font-mono ${
                       track.loadProgress.status === 'failed'
                         ? 'bg-red-900/20  border border-red-500/30 text-red-500'
                         : 'bg-red-900/10 border border-red-500/20 text-red-500/70'
-                    }\`}>
+                    }`}>
                       <div className="flex items-center gap-2">
                         {track.loadProgress.status === 'loading' && (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -855,7 +854,6 @@ const Sequencer: React.FC = () => {
                         {track.loadProgress.message}
                       </div>
                     </div>
-                  
                   )}
 
                   <div className="flex items-center gap-2 mb-4">
@@ -934,9 +932,9 @@ const Sequencer: React.FC = () => {
                             <select
                               value=""
                               onChange={(e) => e.target.value && handleSelectSample(track.id, e.target.value, 'sample')}
-                              className={\`w-full bg-black/30 border border-red-900/30 text-red-200 px-2 py-1 text-xs font-mono mb-2 \${
+                              className={`w-full bg-black/30 border border-red-900/30 text-red-200 px-2 py-1 text-xs font-mono mb-2 ${
                                 loadingSamples[track.id] ? 'opacity-50' : ''
-                              }\`}
+                              }`}
                               disabled={loadingSamples[track.id]}
                             >
                               <option value="">-- Select Sample --</option>
@@ -956,9 +954,9 @@ const Sequencer: React.FC = () => {
                             <select
                               value=""
                               onChange={(e) => e.target.value && handleSelectSample(track.id, e.target.value, 'recording')}
-                              className={\`w-full bg-black/30 border border-red-900/30 text-red-200 px-2 py-1 text-xs font-mono \${
+                              className={`w-full bg-black/30 border border-red-900/30 text-red-200 px-2 py-1 text-xs font-mono ${
                                 loadingSamples[track.id] ? 'opacity-50' : ''
-                              }\`}
+                              }`}
                               disabled={loadingSamples[track.id]}
                             >
                               <option value="">-- Select Recording --</option>
@@ -1012,22 +1010,22 @@ const Sequencer: React.FC = () => {
                     <div className="overflow-x-auto">
                       <div 
                         className="inline-flex gap-1 min-w-full" 
-                        style={{ width: \`max(100%, \${stepAmount * 40}px)\` }}
+                        style={{ width: `max(100%, ${stepAmount * 40}px)` }}
                       >
                         {track.pattern.map((isActive, step) => (
                           <button
                             key={step}
                             onClick={() => toggleStep(track.id, step)}
-                            className={\`
+                            className={`
                               w-10 h-12 border transition-colors relative
-                              \${step === currentStep && isPlaying
+                              ${step === currentStep && isPlaying
                                 ? 'border-red-500 bg-red-900/20'
                                 : isActive
                                   ? 'bg-red-800/50 border-red-400/70 hover:bg-red-700/50'
                                   : 'border-red-500/40 hover:border-red-400/70'
                               }
-                              \${step % 4 === 0 ? 'border-l-2 border-l-red-500/60' : ''}
-                            \`}
+                              ${step % 4 === 0 ? 'border-l-2 border-l-red-500/60' : ''}
+                            `}
                           >
                             {step % 4 === 0 && (
                               <div className="absolute -top-6 left-0 text-xs font-mono text-red-500/50">
@@ -1046,7 +1044,7 @@ const Sequencer: React.FC = () => {
         )}
       </div>
 
-      <style jsx>{\`
+      <style jsx>{`
         .overflow-x-auto::-webkit-scrollbar {
           height: 8px;
         }
@@ -1064,9 +1062,9 @@ const Sequencer: React.FC = () => {
         .overflow-x-auto::-webkit-scrollbar-thumb:hover {
           background: rgba(220, 38, 38, 0.5);
         }
-      \`}</style>
+      `}</style>
     </div>
   );
 };
 
-export default Sequencer;`}
+export default Sequencer;
