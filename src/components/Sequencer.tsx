@@ -8,6 +8,11 @@ import { supabase } from '../lib/supabase';
 import { getSampleUrl } from '../lib/samples';
 import Manual from './Manual';
 
+interface SequencerProps {
+  isManualOpen: boolean;
+  onManualClose: () => void;
+}
+
 interface Track {
   id: string;
   name: string;
@@ -53,7 +58,7 @@ interface Sample {
 const STEP_OPTIONS = [4, 8, 16, 32, 64] as const;
 type StepAmount = typeof STEP_OPTIONS[number];
 
-const Sequencer: React.FC = () => {
+const Sequencer: React.FC<SequencerProps> = ({ isManualOpen, onManualClose }) => {
   const [bpm, setBpm] = useState(120);
   const [swing, setSwing] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -67,7 +72,6 @@ const Sequencer: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [loadingSamples, setLoadingSamples] = useState<{ [key: string]: boolean }>({});
   const [stepAmount, setStepAmount] = useState<StepAmount>(16);
-  const [isManualOpen, setIsManualOpen] = useState(false);
 
   const players = useRef(new Map<string, Tone.Player>());
   const filters = useRef(new Map<string, Tone.Filter>());
@@ -645,7 +649,7 @@ const Sequencer: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black/40 relative">
-      <Manual isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+      <Manual isOpen={isManualOpen} onClose={onManualClose} />
       
       <div className="fixed top-16 left-0 right-0 z-40 bg-black/95 border-b border-red-900/20 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
