@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Skull, Brain, Music2, Waves, Zap, Headphones } from 'lucide-react';
+import { X, Skull, Brain, Music2, Waves, Zap, Headphones, Mic, Save, Settings2, Volume2 } from 'lucide-react';
 
 interface ManualProps {
   isOpen: boolean;
@@ -28,18 +28,38 @@ const Manual: React.FC<ManualProps> = ({ isOpen, onClose }) => {
           <div className="space-y-6">
             <section>
               <h3 className="text-red-500 text-sm font-mono uppercase tracking-wider flex items-center gap-2 mb-4">
-                <Brain className="w-4 h-4" />
-                Neural Audio Engine
+                <Mic className="w-4 h-4" />
+                Audio Recorder
               </h3>
               <div className="prose prose-invert prose-red max-w-none">
                 <p className="text-red-300/70">
-                  Echo Delirium uses advanced neural networks to transform your audio into nightmarish soundscapes. The engine analyzes incoming audio in real-time, identifying patterns and applying various transformations based on your settings.
+                  The Audio Recorder allows you to capture and transform sounds:
                 </p>
                 <ul className="space-y-2 text-red-300/70">
-                  <li>Record audio using the built-in recorder</li>
-                  <li>Apply neural processing with the Nightmare Engine controls</li>
-                  <li>Adjust Terror, Madness, and Descent parameters for different effects</li>
-                  <li>Watch the neural activity visualization respond to your audio</li>
+                  <li>Record up to 5 seconds of audio</li>
+                  <li>Name and save your recordings</li>
+                  <li>Edit recordings with trim, normalize, and reverse functions</li>
+                  <li>Use the virtual keyboard to play recordings at different pitches</li>
+                  <li>Apply real-time effects processing</li>
+                </ul>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-red-500 text-sm font-mono uppercase tracking-wider flex items-center gap-2 mb-4">
+                <Brain className="w-4 h-4" />
+                Neural Processing
+              </h3>
+              <div className="prose prose-invert prose-red max-w-none">
+                <p className="text-red-300/70">
+                  The Nightmare Engine processes audio using neural networks:
+                </p>
+                <ul className="space-y-2 text-red-300/70">
+                  <li>Terror: Controls the intensity of audio hallucinations</li>
+                  <li>Madness: Adds chaos and unpredictability to the sound</li>
+                  <li>Descent: Determines the depth of neural processing layers</li>
+                  <li>Watch real-time neural activity visualization</li>
+                  <li>Combine with style influences for unique transformations</li>
                 </ul>
               </div>
             </section>
@@ -51,14 +71,33 @@ const Manual: React.FC<ManualProps> = ({ isOpen, onClose }) => {
               </h3>
               <div className="prose prose-invert prose-red max-w-none">
                 <p className="text-red-300/70">
-                  The built-in sequencer allows you to create rhythmic patterns and melodies using your processed sounds.
+                  Create rhythmic patterns and melodies with multiple track types:
                 </p>
                 <ul className="space-y-2 text-red-300/70">
-                  <li>Add drum, bass, and poly synth tracks</li>
-                  <li>Set BPM and swing amount</li>
-                  <li>Create patterns up to 64 steps</li>
-                  <li>Use the virtual keyboard to play sounds live</li>
-                  <li>Apply effects like filter, delay, and reverb per track</li>
+                  <li>Drum Tracks:
+                    <ul>
+                      <li>Load user samples or recordings</li>
+                      <li>Pattern sequencing up to 64 steps</li>
+                      <li>Individual track effects processing</li>
+                      <li>Mute, solo, and gate controls</li>
+                    </ul>
+                  </li>
+                  <li>Bass Tracks:
+                    <ul>
+                      <li>Built-in synthesizer with multiple waveforms</li>
+                      <li>ADSR envelope and filter controls</li>
+                      <li>Scale-based pattern sequencing</li>
+                      <li>Preset patterns and sound presets</li>
+                    </ul>
+                  </li>
+                  <li>Poly Tracks:
+                    <ul>
+                      <li>Polyphonic synthesizer for chords and melodies</li>
+                      <li>Multiple oscillator types</li>
+                      <li>Advanced modulation options</li>
+                      <li>Chord progression sequencing</li>
+                    </ul>
+                  </li>
                 </ul>
               </div>
             </section>
@@ -70,18 +109,27 @@ const Manual: React.FC<ManualProps> = ({ isOpen, onClose }) => {
               </h3>
               <div className="prose prose-invert prose-red max-w-none">
                 <p className="text-red-300/70">
-                  Each track features a comprehensive effects chain for shaping your sound:
+                  Comprehensive effects chain for each track:
                 </p>
                 <ul className="space-y-2 text-red-300/70">
-                  <li>Filter with resonance control</li>
-                  <li>Multi-mode distortion</li>
-                  <li>Delay with feedback</li>
-                  <li>Reverb with decay control</li>
-                  <li>Chorus/ensemble effects</li>
-                  <li>Lo-fi degradation</li>
-                  <li>Pitch shifting</li>
-                  <li>Granular processing</li>
-                  <li>Spectral effects</li>
+                  <li>Reality Synthesis:
+                    <ul>
+                      <li>Filter with frequency and resonance control</li>
+                      <li>Multi-mode distortion with mix control</li>
+                      <li>Delay with time and feedback parameters</li>
+                      <li>Reverb with decay and mix controls</li>
+                      <li>Pitch shifting with formant preservation</li>
+                    </ul>
+                  </li>
+                  <li>Advanced Effects:
+                    <ul>
+                      <li>Chorus ensemble with multiple voices</li>
+                      <li>Lo-fi degradation with bit crushing</li>
+                      <li>Granular processing controls</li>
+                      <li>Spectral warping and shifting</li>
+                      <li>Neural modulation system</li>
+                    </ul>
+                  </li>
                 </ul>
               </div>
             </section>
@@ -93,32 +141,104 @@ const Manual: React.FC<ManualProps> = ({ isOpen, onClose }) => {
               </h3>
               <div className="prose prose-invert prose-red max-w-none">
                 <p className="text-red-300/70">
-                  The Style System allows you to blend different musical influences:
+                  Blend different musical styles and influences:
                 </p>
                 <ul className="space-y-2 text-red-300/70">
-                  <li>Choose from multiple style presets</li>
-                  <li>Blend up to 3 styles simultaneously</li>
-                  <li>Adjust influence and blend amounts</li>
-                  <li>Watch the neural network adapt to your style choices</li>
+                  <li>Available Styles:
+                    <ul>
+                      <li>Glitch: Digital artifacts and circuit-bent chaos</li>
+                      <li>Drone: Deep resonant harmonics</li>
+                      <li>Vapor: Time-stretched, pitch-warped textures</li>
+                      <li>Dark: Sub-bass drones and ominous resonances</li>
+                      <li>Ritual: Ancient harmonics and mystical frequencies</li>
+                      <li>Spectral: Crystalline harmonics and shimmering</li>
+                      <li>Cosmic: Interstellar drones and quantum fluctuations</li>
+                      <li>Necro: Undead harmonics and sepulchral resonance</li>
+                    </ul>
+                  </li>
+                  <li>Style Controls:
+                    <ul>
+                      <li>Blend up to 3 compatible styles</li>
+                      <li>Adjust influence amount per style</li>
+                      <li>Control overall style blend intensity</li>
+                      <li>Watch real-time neural adaptation</li>
+                    </ul>
+                  </li>
                 </ul>
               </div>
             </section>
 
             <section>
               <h3 className="text-red-500 text-sm font-mono uppercase tracking-wider flex items-center gap-2 mb-4">
-                <Headphones className="w-4 h-4" />
-                Audio Management
+                <Save className="w-4 h-4" />
+                Content Management
               </h3>
               <div className="prose prose-invert prose-red max-w-none">
                 <p className="text-red-300/70">
-                  Echo Delirium provides tools for managing your audio content:
+                  Tools for managing your audio content:
                 </p>
                 <ul className="space-y-2 text-red-300/70">
-                  <li>Save and organize recordings</li>
-                  <li>Import/export audio files</li>
-                  <li>Sample management system</li>
-                  <li>Preset saving and loading</li>
-                  <li>Track mute, solo, and gate controls</li>
+                  <li>Recordings:
+                    <ul>
+                      <li>Save and organize recorded audio</li>
+                      <li>Edit recordings with built-in tools</li>
+                      <li>Download recordings as WAV files</li>
+                      <li>Use recordings as samples in the sequencer</li>
+                    </ul>
+                  </li>
+                  <li>Samples:
+                    <ul>
+                      <li>Upload custom audio samples</li>
+                      <li>Organize samples by type</li>
+                      <li>Access built-in sample library</li>
+                      <li>Preview samples before use</li>
+                    </ul>
+                  </li>
+                  <li>Presets:
+                    <ul>
+                      <li>Save effect parameter combinations</li>
+                      <li>Export and import presets</li>
+                      <li>Quick access to common settings</li>
+                      <li>Share presets between projects</li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-red-500 text-sm font-mono uppercase tracking-wider flex items-center gap-2 mb-4">
+                <Settings2 className="w-4 h-4" />
+                Global Controls
+              </h3>
+              <div className="prose prose-invert prose-red max-w-none">
+                <p className="text-red-300/70">
+                  Project-wide settings and controls:
+                </p>
+                <ul className="space-y-2 text-red-300/70">
+                  <li>Tempo:
+                    <ul>
+                      <li>Adjust BPM from 20 to 300</li>
+                      <li>Control swing amount</li>
+                      <li>Set step resolution (4-64 steps)</li>
+                    </ul>
+                  </li>
+                  <li>Track Management:
+                    <ul>
+                      <li>Add/remove tracks</li>
+                      <li>Adjust track volumes</li>
+                      <li>Set track effects</li>
+                      <li>Configure routing</li>
+                    </ul>
+                  </li>
+                  <li>Project Features:
+                    <ul>
+                      <li>Save and load projects</li>
+                      <li>Export audio</li>
+                      <li>Backup settings</li>
+                      <li>Share configurations</li>
+                    </ul>
+                  </li>
                 </ul>
               </div>
             </section>
