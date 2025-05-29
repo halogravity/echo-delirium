@@ -200,13 +200,12 @@ const Sequencer: React.FC = () => {
 
       let urlToLoad = track.samplePath;
 
-      // If it's a local sample from the /samples directory, fetch its content first
+      // If it's a local sample from the /samples directory, read the URL from the file
       if (track.samplePath.startsWith('/samples/')) {
         try {
           const response = await fetch(track.samplePath);
           if (!response.ok) throw new Error('Failed to load sample file');
-          const blob = await response.blob();
-          urlToLoad = URL.createObjectURL(blob);
+          urlToLoad = await response.text();
         } catch (error) {
           console.error('Error loading local sample:', error);
           throw new Error('Failed to load local sample');
@@ -246,9 +245,6 @@ const Sequencer: React.FC = () => {
       const player = new Tone.Player({
         url: urlToLoad,
         onload: () => {
-          if (urlToLoad.startsWith('blob:')) {
-            URL.revokeObjectURL(urlToLoad);
-          }
           setTracks(prev => prev.map(t => 
             t.id === track.id ? {
               ...t,
@@ -259,9 +255,6 @@ const Sequencer: React.FC = () => {
         },
         onerror: (error) => {
           console.error(`Error loading sample for ${track.name}:`, error);
-          if (urlToLoad.startsWith('blob:')) {
-            URL.revokeObjectURL(urlToLoad);
-          }
           setTracks(prev => prev.map(t => 
             t.id === track.id ? {
               ...t,
