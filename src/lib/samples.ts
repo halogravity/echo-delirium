@@ -83,6 +83,11 @@ export async function getSampleUrl(path: string): Promise<string | null> {
       throw new Error('Invalid path provided');
     }
 
+    // If the path is already a full URL, return it directly
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+
     // Handle default samples (those in the public directory)
     if (path.startsWith('/samples/') || path.startsWith('samples/') || !path.includes('/')) {
       // Ensure the path starts with /samples/ and ends with .wav
