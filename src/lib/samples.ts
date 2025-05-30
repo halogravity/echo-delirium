@@ -85,7 +85,8 @@ export async function getSampleUrl(path: string): Promise<string | null> {
 
     // Handle default samples (those with just a filename)
     if (!path.includes('/')) {
-      return `/samples/${path}`;
+      // Return the direct path to the audio file in the public directory
+      return `/samples/${path.toLowerCase()}.wav`;
     }
 
     // Create retry operation
