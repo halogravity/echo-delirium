@@ -236,11 +236,11 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
       filterFreq: 800,
       filterQ: 2,
       oscillatorType: "sawtooth" as OscillatorType,
+      volume: 0,
       delayTime: 0.25,
-      delayFeedback: 0.5,
-      reverbDecay: 1.5,
-      reverbMix: 0.5,
-      volume: 0
+      delayFeedback: 0.3,
+      reverbDecay: 2,
+      reverbMix: 0.5
     };
   });
 
@@ -288,9 +288,8 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
           type: 'lowpass',
           rolloff: -24
         }
-      }).toDestination();
+      }).connect(new Tone.Gain(0.5)).toDestination();
 
-      // Create effects chain
       const filter = new Tone.Filter({
         frequency: params.filterFreq,
         type: "lowpass",
@@ -298,20 +297,18 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
       });
 
       const delay = new Tone.FeedbackDelay({
-        delayTime: params.delayTime || 0.25,
-        feedback: params.delayFeedback || 0.5
+        delayTime: params.delayTime,
+        feedback: params.delayFeedback
       });
 
       const reverb = new Tone.Reverb({
-        decay: params.reverbDecay || 1.5,
-        wet: params.reverbMix || 0.5
+        decay: params.reverbDecay,
+        wet: params.reverbMix
       });
 
-      // Connect effects chain
-      synthRef.current.connect(filter);
-      filter.connect(delay);
-      delay.connect(reverb);
-      reverb.toDestination();
+      if (synthRef.current) {
+        synthRef.current.chain(filter, delay, reverb, Tone.Destination);
+      }
     }
 
     return () => {
@@ -326,7 +323,6 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
     if (synthRef.current) {
       const now = Tone.now();
       
-      // Update synth parameters
       synthRef.current.set({
         oscillator: { type: params.oscillatorType },
         envelope: {
@@ -337,27 +333,24 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
         }
       });
 
-      // Update filter parameters
       synthRef.current.filter.frequency.setValueAtTime(params.filterFreq, now);
       synthRef.current.filter.Q.setValueAtTime(params.filterQ, now);
 
-      // Update gain
-      synthRef.current.volume.setValueAtTime(params.volume || 0, now);
+      if (synthRef.current.volume) {
+        synthRef.current.volume.value = params.volume;
+      }
 
-      // Update effects
-      if (synthRef.current.effects) {
-        // Update delay
-        if (synthRef.current.effects[1] instanceof Tone.FeedbackDelay) {
-          const delay = synthRef.current.effects[1] as Tone.FeedbackDelay;
-          delay.delayTime.setValueAtTime(params.delayTime || 0.25, now);
-          delay.feedback.setValueAtTime(params.delayFeedback || 0.5, now);
+      if (synthRef.current.get().effects) {
+        const effects = synthRef.current.get().effects;
+        
+        if (effects.delay) {
+          effects.delay.delayTime.setValueAtTime(params.delayTime, now);
+          effects.delay.feedback.setValueAtTime(params.delayFeedback, now);
         }
 
-        // Update reverb
-        if (synthRef.current.effects[2] instanceof Tone.Reverb) {
-          const reverb = synthRef.current.effects[2] as Tone.Reverb;
-          reverb.decay = params.reverbDecay || 1.5;
-          reverb.wet.setValueAtTime(params.reverbMix || 0.5, now);
+        if (effects.reverb) {
+          effects.reverb.decay = params.reverbDecay;
+          effects.reverb.wet.setValueAtTime(params.reverbMix, now);
         }
       }
     }
@@ -701,8 +694,19 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-mono text-red-500/70">Effects</div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="text-xs font-mono text-red-500/70">Oscillator</div>
+              <select
+                value={params.oscillatorType}
+                onChange={(e) => setParams(prev => ({ ...prev, oscillatorType: e.target.value as OscillatorType }))}
+                className="w-full bg-black/30 border border-red-900/30 text-red-200 px-2 py-1 text-xs font-mono"
+              >
+                <option value="sine">Sine</option>
+                <option value="square">Square</option>
+                <option value="sawtooth">Saw</option>
+                <option value="triangle">Triangle</option>
+              </select>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="flex flex-col items-center">
                   <Knob
                     value={params.filterFreq}
@@ -726,58 +730,6 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
                   />
                   <div className="text-red-300/50 text-xs font-mono mt-1">
                     Q: {params.filterQ.toFixed(1)}
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <Knob
-                    value={params.delayTime || 0.25}
-                    min={0}
-                    max={1}
-                    onChange={(value) => setParams(prev => ({ ...prev, delayTime: value }))}
-                    label="Delay"
-                  />
-                  <div className="text-red-300/50 text-xs font-mono mt-1">
-                    {((params.delayTime || 0.25) * 1000).toFixed(0)}ms
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <Knob
-                    value={params.delayFeedback || 0.5}
-                    min={0}
-                    max={0.9}
-                    onChange={(value) => setParams(prev => ({ ...prev, delayFeedback: value }))}
-                    label="Feedback"
-                  />
-                  <div className="text-red-300/50 text-xs font-mono mt-1">
-                    {Math.round((params.delayFeedback || 0.5) * 100)}%
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <Knob
-                    value={params.reverbDecay || 1.5}
-                    min={0.1}
-                    max={10}
-                    onChange={(value) => setParams(prev => ({ ...prev, reverbDecay: value }))}
-                    label="Reverb"
-                  />
-                  <div className="text-red-300/50 text-xs font-mono mt-1">
-                    {(params.reverbDecay || 1.5).toFixed(1)}s
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <Knob
-                    value={params.reverbMix || 0.5}
-                    min={0}
-                    max={1}
-                    onChange={(value) => setParams(prev => ({ ...prev, reverbMix: value }))}
-                    label="Mix"
-                  />
-                  <div className="text-red-300/50 text-xs font-mono mt-1">
-                    {Math.round((params.reverbMix || 0.5) * 100)}%
                   </div>
                 </div>
               </div>
