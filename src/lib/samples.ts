@@ -92,7 +92,7 @@ export async function getSampleUrl(path: string): Promise<string | null> {
     if (path.startsWith('/samples/') || !path.includes('/')) {
       const normalizedPath = path.startsWith('/samples/') ? path : `/samples/${path}`;
       const finalPath = normalizedPath.endsWith('.wav') ? normalizedPath : `${normalizedPath}.wav`;
-      return `${window.location.origin}${finalPath}`;
+      return window.location.origin + finalPath;
     }
 
     // Handle user samples with retry logic
@@ -100,24 +100,43 @@ export async function getSampleUrl(path: string): Promise<string | null> {
       retries: 3,
       factor: 2,
       minTimeout: 1000,
-      maxTimeout: 5000
+      maxTimeout: 5000,
+      randomize: true
     });
 
     return new Promise((resolve, reject) => {
-      operation.attempt(async () => {
+      operation.attempt(async (currentAttempt) => {
         try {
           const { data, error } = await supabase.storage
             .from('echobucket')
-            .createSignedUrl(path, 3600);
+            .createSignedUrl(path, 3600); // 1 hour expiry
 
           if (error) {
+            console.error(`Attempt ${currentAttempt}: Error getting signed URL:`, error);
             if (operation.retry(error)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          if (!data?.signedUrl) {
+            const err = new Error('No signed URL received');
+            if (operation.retry(err)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          // Validate URL before returning
+          const response = await fetch(data.signedUrl, { method: 'HEAD' });
+          if (!response.ok) {
+            const err = new Error(`Invalid sample URL: ${response.status} ${response.statusText}`);
+            if (operation.retry(err)) return;
             reject(operation.mainError());
             return;
           }
 
           resolve(data.signedUrl);
         } catch (error) {
+          console.error(`Attempt ${currentAttempt}: Error:`, error);
           if (operation.retry(error as Error)) return;
           reject(operation.mainError());
         }
@@ -148,43 +167,65 @@ export async function loadSamples(): Promise<Sample[]> {
       retries: 3,
       factor: 2,
       minTimeout: 1000,
-      maxTimeout: 5000
+      maxTimeout: 5000,
+      randomize: true
     });
 
     return new Promise((resolve, reject) => {
-      operation.attempt(async () => {
+      operation.attempt(async (currentAttempt) => {
         try {
-          const { data: userSamples, error } = await supabase
+          // Load user samples
+          const { data: userSamples, error: userError } = await supabase
             .from('samples')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
-          if (error) {
-            if (operation.retry(error)) return;
+          if (userError) {
+            console.error(`Attempt ${currentAttempt}: Error loading user samples:`, userError);
+            if (operation.retry(userError)) return;
             reject(operation.mainError());
             return;
           }
 
+          // Load default samples
           const { data: defaultSamples, error: defaultError } = await supabase
             .from('default_samples')
             .select('*')
             .order('created_at', { ascending: false });
 
           if (defaultError) {
+            console.error(`Attempt ${currentAttempt}: Error loading default samples:`, defaultError);
             if (operation.retry(defaultError)) return;
             reject(operation.mainError());
             return;
           }
 
-          resolve([
+          // Combine and validate samples
+          const samples = [
             ...(userSamples || []),
             ...(defaultSamples || []).map(sample => ({
               ...sample,
               user_id: null
             }))
-          ]);
+          ];
+
+          // Pre-validate sample URLs
+          const validatedSamples = await Promise.all(
+            samples.map(async (sample) => {
+              try {
+                const url = await getSampleUrl(sample.storage_path);
+                return url ? sample : null;
+              } catch (error) {
+                console.warn(`Invalid sample ${sample.id}:`, error);
+                return null;
+              }
+            })
+          );
+
+          resolve(validatedSamples.filter((sample): sample is Sample => sample !== null));
         } catch (error) {
+          console.error(`Attempt ${currentAttempt}: Error:`, error);
           if (operation.retry(error as Error)) return;
           reject(operation.mainError());
         }
@@ -215,11 +256,12 @@ export async function deleteSample(id: string): Promise<boolean> {
       retries: 3,
       factor: 2,
       minTimeout: 1000,
-      maxTimeout: 5000
+      maxTimeout: 5000,
+      randomize: true
     });
 
     return new Promise((resolve, reject) => {
-      operation.attempt(async () => {
+      operation.attempt(async (currentAttempt) => {
         try {
           const { data: sample, error: fetchError } = await supabase
             .from('samples')
@@ -229,6 +271,7 @@ export async function deleteSample(id: string): Promise<boolean> {
             .single();
 
           if (fetchError) {
+            console.error(`Attempt ${currentAttempt}: Error fetching sample:`, fetchError);
             if (operation.retry(fetchError)) return;
             reject(operation.mainError());
             return;
@@ -244,6 +287,7 @@ export async function deleteSample(id: string): Promise<boolean> {
             .remove([sample.storage_path]);
 
           if (storageError) {
+            console.error(`Attempt ${currentAttempt}: Error removing from storage:`, storageError);
             if (operation.retry(storageError)) return;
             reject(operation.mainError());
             return;
@@ -256,6 +300,7 @@ export async function deleteSample(id: string): Promise<boolean> {
             .eq('user_id', user.id);
 
           if (dbError) {
+            console.error(`Attempt ${currentAttempt}: Error deleting from database:`, dbError);
             if (operation.retry(dbError)) return;
             reject(operation.mainError());
             return;
@@ -263,6 +308,7 @@ export async function deleteSample(id: string): Promise<boolean> {
 
           resolve(true);
         } catch (error) {
+          console.error(`Attempt ${currentAttempt}: Error:`, error);
           if (operation.retry(error as Error)) return;
           reject(operation.mainError());
         }
