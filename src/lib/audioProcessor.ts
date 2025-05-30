@@ -5,7 +5,6 @@ import { AudioDeepDream } from '../lib/deepDream';
 export class AudioProcessor {
   private analyser: Tone.Analyser;
   private waveformData: Float32Array;
-  private readonly API_URL = 'http://localhost:5173';
   private effects!: {
     reverb: Tone.Reverb;
     delay: Tone.FeedbackDelay;
@@ -38,9 +37,6 @@ export class AudioProcessor {
   private deepDream: AudioDeepDream;
   private basePitch: number = 0;
   private pitchShiftAmount: number = 0;
-  private currentStyle: string = 'ambient';
-  private styleInfluence: number = 0;
-  private styleBlend: number = 0;
 
   constructor() {
     this.analyser = new Tone.Analyser({
@@ -219,6 +215,42 @@ export class AudioProcessor {
     }
   }
 
+  async loadAudioBuffer(audioUrl: string): Promise<void> {
+    try {
+      if (!audioUrl) {
+        throw new Error('Invalid audio URL');
+      }
+
+      if (!this.audioBuffers.has(audioUrl)) {
+        console.log('Loading audio buffer:', audioUrl);
+        const response = await fetch(audioUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+          throw new Error('Empty audio data received');
+        }
+
+        try {
+          const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+          if (!audioBuffer || audioBuffer.length === 0) {
+            throw new Error('Failed to decode audio data: empty buffer');
+          }
+          console.log('Audio buffer loaded successfully');
+          this.audioBuffers.set(audioUrl, audioBuffer);
+        } catch (decodeError) {
+          throw new Error(`Failed to decode audio data: ${decodeError.message}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading audio buffer:', error);
+      throw error;
+    }
+  }
+
   async playProcessedSound(note: string, audioUrl: string, hold: boolean = false) {
     try {
       if (!audioUrl) {
@@ -240,6 +272,7 @@ export class AudioProcessor {
       // Create or update player
       let player = this.players.get(note);
       if (!player) {
+        console.log('Creating new player for note:', note);
         player = new Tone.Player({
           url: audioBuffer,
           loop: this.loopEnabled,
@@ -263,6 +296,7 @@ export class AudioProcessor {
 
       // Wait for player to be loaded
       if (!player.loaded) {
+        console.log('Waiting for player to load...');
         await new Promise<void>((resolve) => {
           player!.onstop = () => resolve();
           player!.onload = () => resolve();
@@ -273,6 +307,7 @@ export class AudioProcessor {
         player.stop();
         this.isPlaying = false;
       } else {
+        console.log('Starting player for note:', note);
         player.start();
         this.isPlaying = true;
       }
@@ -282,40 +317,6 @@ export class AudioProcessor {
       }
     } catch (error) {
       console.error('Error playing sound:', error);
-      throw error;
-    }
-  }
-
-  async loadAudioBuffer(audioUrl: string): Promise<void> {
-    try {
-      if (!audioUrl) {
-        throw new Error('Invalid audio URL');
-      }
-
-      if (!this.audioBuffers.has(audioUrl)) {
-        const response = await fetch(audioUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        if (!arrayBuffer || arrayBuffer.byteLength === 0) {
-          throw new Error('Empty audio data received');
-        }
-
-        try {
-          const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
-          if (!audioBuffer || audioBuffer.length === 0) {
-            throw new Error('Failed to decode audio data: empty buffer');
-          }
-          this.audioBuffers.set(audioUrl, audioBuffer);
-        } catch (decodeError) {
-          throw new Error(`Failed to decode audio data: ${decodeError.message}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading audio buffer:', error);
       throw error;
     }
   }
