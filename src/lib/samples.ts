@@ -83,13 +83,12 @@ export async function getSampleUrl(path: string): Promise<string | null> {
       throw new Error('Invalid path provided');
     }
 
-    // Handle default samples (those with just a filename)
+    // Handle default samples (those in the public directory)
     if (!path.includes('/')) {
-      // Return the direct path to the audio file in the public directory
-      return `/samples/${path.toLowerCase()}.wav`;
+      return `/samples/${path}.wav`;
     }
 
-    // Create retry operation
+    // Create retry operation for user samples
     const operation = retry.operation({
       retries: 3,
       factor: 2,
