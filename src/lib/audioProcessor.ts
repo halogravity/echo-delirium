@@ -32,11 +32,15 @@ export class AudioProcessor {
   private isInitialized: boolean = false;
   private isPlaying: boolean = false;
   private loopEnabled: boolean = false;
+  private musicRNN: mm.MusicRNN | null = null;
+  private musicVAE: mm.MusicVAE | null = null;
   private deepDream: AudioDeepDream;
+  private basePitch: number = 0;
   private pitchShiftAmount: number = 0;
-  private baseNote: number = 60; // Middle C (C4)
-  private mainGain: Tone.Gain;
-  private effectsGain: Tone.Gain;
+  private currentStyle: string = 'ambient';
+  private styleInfluence: number = 0;
+  private styleBlend: number = 0;
+  private loadedUrls: Set<string> = new Set();
 
   constructor() {
     this.analyser = new Tone.Analyser({
@@ -48,8 +52,6 @@ export class AudioProcessor {
     this.audioBuffers = new Map();
     this.players = new Map();
     this.deepDream = new AudioDeepDream();
-    this.mainGain = new Tone.Gain(1).toDestination();
-    this.effectsGain = new Tone.Gain(1).toDestination();
   }
 
   async initialize() {
@@ -174,31 +176,6 @@ export class AudioProcessor {
         }
       };
 
-      // Create parallel effect chains
-      const directChain = new Tone.Gain();
-      const effectChain = new Tone.Gain();
-
-      // Main signal flow
-      this.effects.pitchShift.chain(
-        this.effects.filter,
-        directChain,
-        this.mainGain
-      );
-
-      // Effects chain
-      this.effects.pitchShift.connect(effectChain);
-      effectChain.chain(
-        this.effects.distortion,
-        this.effects.delay,
-        this.effects.reverb,
-        this.effectsGain
-      );
-
-      // Connect both chains to analyzer
-      this.mainGain.connect(this.analyser);
-      this.effectsGain.connect(this.analyser);
-      this.analyser.toDestination();
-
       // Start modulation and effects
       this.effects.echo.modulation.connect(this.effects.echo.delay1.delayTime);
       this.effects.echo.modulation.connect(this.effects.echo.delay2.delayTime);
@@ -208,30 +185,36 @@ export class AudioProcessor {
       // Start chorus voices
       this.effects.chorus.voices.forEach(voice => voice.start());
 
+      // Connect effects chain
+      this.effects.pitchShift.connect(this.effects.distortion);
+      this.effects.distortion.connect(this.effects.filter);
+      
       // Connect lofi chain
-      this.effects.lofi.bitCrusher.chain(
-        this.effects.lofi.filter,
-        this.effects.lofi.distortion,
-        this.effects.lofi.vibrato,
-        this.effects.lofi.mix,
-        effectChain
-      );
-
+      this.effects.filter.connect(this.effects.lofi.bitCrusher);
+      this.effects.lofi.bitCrusher.connect(this.effects.lofi.filter);
+      this.effects.lofi.filter.connect(this.effects.lofi.distortion);
+      this.effects.lofi.distortion.connect(this.effects.lofi.vibrato);
+      this.effects.lofi.vibrato.connect(this.effects.lofi.mix);
+      this.effects.lofi.mix.connect(this.effects.echo.delay1);
+      
       // Connect echo chain
-      this.effects.echo.delay1.chain(
-        this.effects.echo.delay2,
-        this.effects.echo.delay3,
-        this.effects.echo.filter,
-        this.effects.echo.mix,
-        effectChain
-      );
-
+      this.effects.echo.delay1.connect(this.effects.echo.delay2);
+      this.effects.echo.delay2.connect(this.effects.echo.delay3);
+      this.effects.echo.delay3.connect(this.effects.echo.filter);
+      this.effects.echo.filter.connect(this.effects.echo.mix);
+      this.effects.echo.mix.connect(this.effects.delay);
+      
       // Connect chorus chain
       this.effects.chorus.voices.forEach(voice => {
         voice.connect(this.effects.chorus.mix);
       });
       this.effects.chorus.mix.connect(this.effects.chorus.wet);
-      this.effects.chorus.wet.connect(effectChain);
+      this.effects.chorus.wet.connect(this.effects.delay);
+      
+      // Connect final chain
+      this.effects.delay.connect(this.effects.reverb);
+      this.effects.reverb.connect(this.analyser);
+      this.analyser.toDestination();
 
       this.isInitialized = true;
     }
@@ -244,27 +227,38 @@ export class AudioProcessor {
       }
 
       await this.initialize();
-      await this.loadAudioBuffer(audioUrl);
+
+      // Check if we need to load the audio buffer
+      if (!this.loadedUrls.has(audioUrl)) {
+        await this.loadAudioBuffer(audioUrl);
+        this.loadedUrls.add(audioUrl);
+      }
       
       const audioBuffer = this.audioBuffers.get(audioUrl);
       if (!audioBuffer) {
         throw new Error('Audio buffer not found for URL: ' + audioUrl);
       }
 
-      if (!this.players.has(note)) {
-        const player = new Tone.Player({
+      // Reuse existing player or create a new one
+      let player = this.players.get(note);
+      if (!player || player.buffer !== audioBuffer) {
+        if (player) {
+          player.dispose();
+        }
+        player = new Tone.Player({
           url: audioBuffer,
           loop: this.loopEnabled,
         }).connect(this.effects.pitchShift);
         this.players.set(note, player);
       }
-
-      const player = this.players.get(note)!;
       
-      // Calculate pitch shift based on note and additional effects
+      // Calculate pitch shift
+      const baseNote = 60; // Middle C
       const noteNumber = Tone.Frequency(note).toMidi();
-      const semitones = noteNumber - this.baseNote;
-      this.effects.pitchShift.pitch = semitones + this.pitchShiftAmount;
+      const notePitch = noteNumber - baseNote;
+      
+      // Apply both note transposition and pitch shift effect
+      this.effects.pitchShift.pitch = notePitch + this.pitchShiftAmount;
 
       if (player.state === 'started') {
         player.stop();
@@ -296,6 +290,11 @@ export class AudioProcessor {
           throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
         }
 
+        const contentType = response.headers.get('Content-Type');
+        if (!contentType?.includes('audio/')) {
+          console.warn(`Warning: Unexpected content type for audio file: ${contentType}`);
+        }
+
         const arrayBuffer = await response.arrayBuffer();
         if (!arrayBuffer || arrayBuffer.byteLength === 0) {
           throw new Error('Empty audio data received');
@@ -323,8 +322,8 @@ export class AudioProcessor {
         this.activeNotes.delete(note);
         const player = this.players.get(note);
         if (player && player.state === 'started') {
-          // Use release time to allow effects to fade out
-          player.stop("+0.1");
+          player.stop();
+          this.isPlaying = false;
         }
       }
     } catch (error) {
@@ -335,8 +334,7 @@ export class AudioProcessor {
   stopAllNotes() {
     this.players.forEach(player => {
       if (player.state === 'started') {
-        // Use release time to allow effects to fade out
-        player.stop("+0.1");
+        player.stop();
       }
     });
     this.activeNotes.clear();
@@ -363,8 +361,11 @@ export class AudioProcessor {
     delayTime: number;
     filterFreq: number;
     resonance?: number;
+    echoIntensity: number;
+    echoLength: number;
     distortion?: number;
     distortionMix?: number;
+    pareidoliaIntensity?: number;
     pitchShift?: number;
     pitchMix?: number;
     chorusDepth?: number;
@@ -375,53 +376,14 @@ export class AudioProcessor {
     try {
       if (!this.isInitialized) return;
 
-      // Update filter
-      if (effects.filterFreq !== undefined) {
-        this.effects.filter.frequency.rampTo(effects.filterFreq, 0.1);
-      }
-      if (effects.resonance !== undefined) {
-        this.effects.filter.Q.rampTo(effects.resonance, 0.1);
-      }
-
-      // Update reverb
-      if (effects.reverbLevel !== undefined) {
-        this.effects.reverb.wet.rampTo(effects.reverbLevel, 0.1);
-      }
-
-      // Update delay
-      if (effects.delayTime !== undefined) {
-        this.effects.delay.delayTime.rampTo(effects.delayTime, 0.1);
-      }
-
-      // Update distortion
-      if (effects.distortion !== undefined) {
-        this.effects.distortion.set({ distortion: effects.distortion });
-      }
-      if (effects.distortionMix !== undefined) {
-        this.effects.distortion.wet.rampTo(effects.distortionMix, 0.1);
-      }
-
-      // Update pitch shift
-      if (effects.pitchShift !== undefined) {
-        this.pitchShiftAmount = effects.pitchShift;
-        // Update pitch for any currently playing notes
-        this.activeNotes.forEach(note => {
-          const noteNumber = Tone.Frequency(note).toMidi();
-          const semitones = noteNumber - this.baseNote;
-          this.effects.pitchShift.pitch = semitones + this.pitchShiftAmount;
-        });
-      }
-      if (effects.pitchMix !== undefined) {
-        this.effects.pitchShift.wet.rampTo(effects.pitchMix, 0.1);
-      }
-
       // Update chorus
       if (effects.chorusDepth !== undefined) {
         this.effects.chorus.voices.forEach((voice, i) => {
-          const depth = Math.min(1, effects.chorusDepth! * (1 + i * 0.2));
-          voice.set({ depth });
+          const depth = effects.chorusDepth! * (1 + i * 0.2);
+          voice.depth = Math.min(1, depth);
         });
       }
+      
       if (effects.chorusMix !== undefined) {
         this.effects.chorus.wet.gain.rampTo(effects.chorusMix, 0.1);
       }
@@ -429,11 +391,12 @@ export class AudioProcessor {
       // Update lofi effects
       if (effects.lofiAmount !== undefined) {
         const amount = effects.lofiAmount;
-        this.effects.lofi.bitCrusher.set({ bits: Math.floor(8 - amount * 4) });
+        this.effects.lofi.bitCrusher.bits = Math.floor(8 - amount * 4);
         this.effects.lofi.filter.frequency.rampTo(4000 - amount * 2000, 0.1);
-        this.effects.lofi.distortion.set({ distortion: amount * 0.4 });
-        this.effects.lofi.vibrato.set({ depth: amount * 0.3 });
+        this.effects.lofi.distortion.distortion = amount * 0.4;
+        this.effects.lofi.vibrato.depth = amount * 0.3;
       }
+      
       if (effects.lofiMix !== undefined) {
         this.effects.lofi.mix.gain.rampTo(effects.lofiMix, 0.1);
       }
@@ -468,14 +431,11 @@ export class AudioProcessor {
           player.dispose();
         });
 
-        // Dispose gains
-        this.mainGain.dispose();
-        this.effectsGain.dispose();
-
         // Clear collections
         this.audioBuffers.clear();
         this.players.clear();
         this.activeNotes.clear();
+        this.loadedUrls.clear();
         this.isInitialized = false;
       }
     } catch (error) {
@@ -484,4 +444,4 @@ export class AudioProcessor {
   }
 }
 
-export default AudioProcessor
+export default AudioProcessor;
