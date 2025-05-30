@@ -5,6 +5,7 @@ import { AudioDeepDream } from '../lib/deepDream';
 export class AudioProcessor {
   private analyser: Tone.Analyser;
   private waveformData: Float32Array;
+  private readonly API_URL = 'http://localhost:5173';
   private effects!: {
     reverb: Tone.Reverb;
     delay: Tone.FeedbackDelay;
@@ -57,7 +58,6 @@ export class AudioProcessor {
     if (!this.isInitialized) {
       await Tone.start();
       
-      // Initialize effects chain
       this.effects = {
         pitchShift: new Tone.PitchShift({
           pitch: 0,

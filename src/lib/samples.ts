@@ -15,7 +15,6 @@ export async function uploadSample(file: Blob, fileName: string, type: string): 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
-      // Try to refresh the session
       const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError || !session?.user) {
         throw new Error('Session expired. Please sign in again.');
@@ -26,17 +25,14 @@ export async function uploadSample(file: Blob, fileName: string, type: string): 
       throw new Error('User not authenticated');
     }
 
-    // Validate file type
     if (!(file instanceof Blob) || !file.type.startsWith('audio/')) {
       throw new Error('Invalid file type. Please upload an audio file.');
     }
 
-    // Validate file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
       throw new Error('File too large. Maximum size is 10MB.');
     }
 
-    // Include user ID in storage path to enforce ownership
     const storagePath = `samples/${user.id}/${fileName}`;
 
     const { data, error } = await supabase.storage
@@ -51,7 +47,6 @@ export async function uploadSample(file: Blob, fileName: string, type: string): 
       return null;
     }
 
-    // Save metadata
     const { data: sampleData, error: metadataError } = await supabase
       .from('samples')
       .insert([
@@ -83,38 +78,21 @@ export async function getSampleUrl(path: string): Promise<string | null> {
       throw new Error('Invalid path provided');
     }
 
-    // If the path is already a full URL, return it directly
+    // Handle full URLs
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
-    // Handle default samples (those in the public directory)
-    if (path.startsWith('public/samples/') || path.startsWith('/samples/') || path.startsWith('samples/') || !path.includes('/')) {
-      // Remove 'public/' prefix if present
-      const normalizedPath = path.replace(/^public\//, '');
-      
-      // Ensure the path starts with /samples/
-      const fullPath = normalizedPath.startsWith('/')
-        ? normalizedPath
-        : `/${normalizedPath.startsWith('samples/') ? '' : 'samples/'}${normalizedPath}`;
-      
-      // Ensure .wav extension
-      const finalPath = fullPath.endsWith('.wav') ? fullPath : `${fullPath}.wav`;
-      
-      // Return the full URL for the sample
-      const url = `${window.location.origin}${finalPath}`;
-      
-      // Verify the URL is valid
-      try {
-        const response = await fetch(url, { method: 'HEAD' });
-        if (!response.ok) {
-          throw new Error(`Sample not found at ${url}`);
-        }
-        return url;
-      } catch (error) {
-        console.error('Error verifying sample URL:', error);
-        return null;
-      }
+    // Handle default samples from Tone.js
+    if (path.includes('tonejs.github.io')) {
+      return path;
+    }
+
+    // Handle default samples from public directory
+    if (path.startsWith('/samples/') || !path.includes('/')) {
+      const normalizedPath = path.startsWith('/samples/') ? path : `/samples/${path}`;
+      const finalPath = normalizedPath.endsWith('.wav') ? normalizedPath : `${normalizedPath}.wav`;
+      return `${window.location.origin}${finalPath}`;
     }
 
     // Handle user samples with retry logic
@@ -126,37 +104,21 @@ export async function getSampleUrl(path: string): Promise<string | null> {
     });
 
     return new Promise((resolve, reject) => {
-      operation.attempt(async (currentAttempt) => {
+      operation.attempt(async () => {
         try {
           const { data, error } = await supabase.storage
             .from('echobucket')
-            .createSignedUrl(path, 3600); // 1 hour expiry
+            .createSignedUrl(path, 3600);
 
           if (error) {
-            if (operation.retry(error)) {
-              return;
-            }
+            if (operation.retry(error)) return;
             reject(operation.mainError());
             return;
           }
 
-          // Verify the signed URL is valid
-          try {
-            const response = await fetch(data.signedUrl, { method: 'HEAD' });
-            if (!response.ok) {
-              throw new Error(`Sample not found at ${data.signedUrl}`);
-            }
-            resolve(data.signedUrl);
-          } catch (error) {
-            if (operation.retry(error as Error)) {
-              return;
-            }
-            reject(operation.mainError());
-          }
+          resolve(data.signedUrl);
         } catch (error) {
-          if (operation.retry(error as Error)) {
-            return;
-          }
+          if (operation.retry(error as Error)) return;
           reject(operation.mainError());
         }
       });
