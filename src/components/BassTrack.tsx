@@ -235,12 +235,7 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
       release: 0.2,
       filterFreq: 800,
       filterQ: 2,
-      oscillatorType: "sawtooth" as OscillatorType,
-      volume: 0,
-      delayTime: 0.25,
-      delayFeedback: 0.3,
-      reverbDecay: 2,
-      reverbMix: 0.5
+      oscillatorType: "sawtooth" as OscillatorType
     };
   });
 
@@ -288,27 +283,7 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
           type: 'lowpass',
           rolloff: -24
         }
-      }).connect(new Tone.Gain(0.5)).toDestination();
-
-      const filter = new Tone.Filter({
-        frequency: params.filterFreq,
-        type: "lowpass",
-        Q: params.filterQ
-      });
-
-      const delay = new Tone.FeedbackDelay({
-        delayTime: params.delayTime,
-        feedback: params.delayFeedback
-      });
-
-      const reverb = new Tone.Reverb({
-        decay: params.reverbDecay,
-        wet: params.reverbMix
-      });
-
-      if (synthRef.current) {
-        synthRef.current.chain(filter, delay, reverb, Tone.Destination);
-      }
+      }).toDestination();
     }
 
     return () => {
@@ -321,8 +296,6 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
 
   useEffect(() => {
     if (synthRef.current) {
-      const now = Tone.now();
-      
       synthRef.current.set({
         oscillator: { type: params.oscillatorType },
         envelope: {
@@ -330,29 +303,12 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
           decay: params.decay,
           sustain: params.sustain,
           release: params.release
+        },
+        filter: {
+          Q: params.filterQ,
+          frequency: params.filterFreq
         }
       });
-
-      synthRef.current.filter.frequency.setValueAtTime(params.filterFreq, now);
-      synthRef.current.filter.Q.setValueAtTime(params.filterQ, now);
-
-      if (synthRef.current.volume) {
-        synthRef.current.volume.value = params.volume;
-      }
-
-      if (synthRef.current.get().effects) {
-        const effects = synthRef.current.get().effects;
-        
-        if (effects.delay) {
-          effects.delay.delayTime.setValueAtTime(params.delayTime, now);
-          effects.delay.feedback.setValueAtTime(params.delayFeedback, now);
-        }
-
-        if (effects.reverb) {
-          effects.reverb.decay = params.reverbDecay;
-          effects.reverb.wet.setValueAtTime(params.reverbMix, now);
-        }
-      }
     }
   }, [params]);
 
