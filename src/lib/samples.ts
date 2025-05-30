@@ -84,11 +84,11 @@ export async function getSampleUrl(path: string): Promise<string | null> {
     }
 
     // Handle default samples (those in the public directory)
-    if (path.startsWith('/samples/') || !path.includes('/')) {
+    if (path.startsWith('/samples/') || path.startsWith('samples/') || !path.includes('/')) {
       // Ensure the path starts with /samples/ and ends with .wav
-      const normalizedPath = path.startsWith('/samples/') 
+      const normalizedPath = path.startsWith('/') 
         ? path 
-        : `/samples/${path}${path.endsWith('.wav') ? '' : '.wav'}`;
+        : `/${path.startsWith('samples/') ? '' : 'samples/'}${path}${path.endsWith('.wav') ? '' : '.wav'}`;
       
       // Return the full URL including origin for default samples
       return window.location.origin + normalizedPath;
