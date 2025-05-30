@@ -85,40 +85,14 @@ export async function getSampleUrl(path: string): Promise<string | null> {
 
     // Handle Tone.js hosted samples
     if (path.includes('tonejs.github.io')) {
-      return `https://tonejs.github.io/audio/drum-samples/808/${path}`;
+      return path;
     }
 
     // Handle default samples from public directory
     if (path.startsWith('/samples/') || !path.includes('/')) {
       const normalizedPath = path.startsWith('/samples/') ? path : `/samples/${path}`;
       const finalPath = normalizedPath.endsWith('.wav') ? normalizedPath : `${normalizedPath}.wav`;
-      
-      try {
-        // Fetch the content of the file to check if it's a URL
-        const response = await fetch(finalPath);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch sample file: ${response.status} ${response.statusText}`);
-        }
-        
-        const content = await response.text();
-        const trimmedContent = content.trim();
-        
-        // If the content is a URL, use that instead
-        if (trimmedContent.startsWith('http://') || trimmedContent.startsWith('https://')) {
-          // Validate the URL before returning
-          const urlResponse = await fetch(trimmedContent, { method: 'HEAD' });
-          if (!urlResponse.ok) {
-            throw new Error(`Invalid sample URL in file: ${urlResponse.status} ${urlResponse.statusText}`);
-          }
-          return trimmedContent;
-        }
-        
-        // If not a URL, use the original path
-        return window.location.origin + finalPath;
-      } catch (error) {
-        console.error('Error processing sample file:', error);
-        return null;
-      }
+      return window.location.origin + finalPath;
     }
 
     // Handle user samples with retry logic
@@ -146,15 +120,6 @@ export async function getSampleUrl(path: string): Promise<string | null> {
 
           if (!data?.signedUrl) {
             const err = new Error('No signed URL received');
-            if (operation.retry(err)) return;
-            reject(operation.mainError());
-            return;
-          }
-
-          // Validate URL before returning
-          const response = await fetch(data.signedUrl, { method: 'HEAD' });
-          if (!response.ok) {
-            const err = new Error(`Invalid sample URL: ${response.status} ${response.statusText}`);
             if (operation.retry(err)) return;
             reject(operation.mainError());
             return;
