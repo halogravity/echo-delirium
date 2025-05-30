@@ -92,7 +92,33 @@ export async function getSampleUrl(path: string): Promise<string | null> {
     if (path.startsWith('/samples/') || !path.includes('/')) {
       const normalizedPath = path.startsWith('/samples/') ? path : `/samples/${path}`;
       const finalPath = normalizedPath.endsWith('.wav') ? normalizedPath : `${normalizedPath}.wav`;
-      return window.location.origin + finalPath;
+      
+      try {
+        // Fetch the content of the file to check if it's a URL
+        const response = await fetch(finalPath);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch sample file: ${response.status} ${response.statusText}`);
+        }
+        
+        const content = await response.text();
+        const trimmedContent = content.trim();
+        
+        // If the content is a URL, use that instead
+        if (trimmedContent.startsWith('http://') || trimmedContent.startsWith('https://')) {
+          // Validate the URL before returning
+          const urlResponse = await fetch(trimmedContent, { method: 'HEAD' });
+          if (!urlResponse.ok) {
+            throw new Error(`Invalid sample URL in file: ${urlResponse.status} ${urlResponse.statusText}`);
+          }
+          return trimmedContent;
+        }
+        
+        // If not a URL, use the original path
+        return window.location.origin + finalPath;
+      } catch (error) {
+        console.error('Error processing sample file:', error);
+        return null;
+      }
     }
 
     // Handle user samples with retry logic
