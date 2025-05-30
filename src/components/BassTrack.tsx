@@ -303,12 +303,11 @@ const BassTrack = forwardRef<BassTrackRef, BassTrackProps>(({ currentStep, stepA
           decay: params.decay,
           sustain: params.sustain,
           release: params.release
-        },
-        filter: {
-          Q: params.filterQ,
-          frequency: params.filterFreq
         }
       });
+
+      synthRef.current.filter.frequency.setValueAtTime(params.filterFreq, Tone.now());
+      synthRef.current.filter.Q.setValueAtTime(params.filterQ, Tone.now());
     }
   }, [params]);
 
