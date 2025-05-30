@@ -40,7 +40,6 @@ export class AudioProcessor {
   private currentStyle: string = 'ambient';
   private styleInfluence: number = 0;
   private styleBlend: number = 0;
-  private loadedUrls: Set<string> = new Set();
 
   constructor() {
     this.analyser = new Tone.Analyser({
@@ -228,10 +227,9 @@ export class AudioProcessor {
 
       await this.initialize();
 
-      // Check if we need to load the audio buffer
-      if (!this.loadedUrls.has(audioUrl)) {
+      // Load audio buffer if not already loaded
+      if (!this.audioBuffers.has(audioUrl)) {
         await this.loadAudioBuffer(audioUrl);
-        this.loadedUrls.add(audioUrl);
       }
       
       const audioBuffer = this.audioBuffers.get(audioUrl);
@@ -239,17 +237,20 @@ export class AudioProcessor {
         throw new Error('Audio buffer not found for URL: ' + audioUrl);
       }
 
-      // Reuse existing player or create a new one
+      // Create or update player
       let player = this.players.get(note);
-      if (!player || player.buffer !== audioBuffer) {
-        if (player) {
-          player.dispose();
-        }
+      if (!player) {
         player = new Tone.Player({
           url: audioBuffer,
           loop: this.loopEnabled,
+          onload: () => {
+            console.log(`Player loaded for note ${note}`);
+          }
         }).connect(this.effects.pitchShift);
         this.players.set(note, player);
+      } else {
+        // Update existing player's buffer
+        player.buffer = audioBuffer;
       }
       
       // Calculate pitch shift
@@ -259,6 +260,14 @@ export class AudioProcessor {
       
       // Apply both note transposition and pitch shift effect
       this.effects.pitchShift.pitch = notePitch + this.pitchShiftAmount;
+
+      // Wait for player to be loaded
+      if (!player.loaded) {
+        await new Promise<void>((resolve) => {
+          player!.onstop = () => resolve();
+          player!.onload = () => resolve();
+        });
+      }
 
       if (player.state === 'started') {
         player.stop();
@@ -288,11 +297,6 @@ export class AudioProcessor {
         
         if (!response.ok) {
           throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get('Content-Type');
-        if (!contentType?.includes('audio/')) {
-          console.warn(`Warning: Unexpected content type for audio file: ${contentType}`);
         }
 
         const arrayBuffer = await response.arrayBuffer();
@@ -435,7 +439,6 @@ export class AudioProcessor {
         this.audioBuffers.clear();
         this.players.clear();
         this.activeNotes.clear();
-        this.loadedUrls.clear();
         this.isInitialized = false;
       }
     } catch (error) {
