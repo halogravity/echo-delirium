@@ -83,9 +83,9 @@ export async function getSampleUrl(path: string): Promise<string | null> {
       return path;
     }
 
-    // Handle default samples from Tone.js
+    // Handle Tone.js hosted samples
     if (path.includes('tonejs.github.io')) {
-      return path;
+      return `https://tonejs.github.io/audio/drum-samples/808/${path}`;
     }
 
     // Handle default samples from public directory
@@ -126,5 +126,150 @@ export async function getSampleUrl(path: string): Promise<string | null> {
   } catch (error) {
     console.error('Error getting sample URL:', error);
     return null;
+  }
+}
+
+export async function loadSamples(): Promise<Sample[]> {
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !session?.user) {
+        throw new Error('Session expired. Please sign in again.');
+      }
+    }
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const operation = retry.operation({
+      retries: 3,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 5000
+    });
+
+    return new Promise((resolve, reject) => {
+      operation.attempt(async () => {
+        try {
+          const { data: userSamples, error } = await supabase
+            .from('samples')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (error) {
+            if (operation.retry(error)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          const { data: defaultSamples, error: defaultError } = await supabase
+            .from('default_samples')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (defaultError) {
+            if (operation.retry(defaultError)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          resolve([
+            ...(userSamples || []),
+            ...(defaultSamples || []).map(sample => ({
+              ...sample,
+              user_id: null
+            }))
+          ]);
+        } catch (error) {
+          if (operation.retry(error as Error)) return;
+          reject(operation.mainError());
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error in loadSamples:', error);
+    return [];
+  }
+}
+
+export async function deleteSample(id: string): Promise<boolean> {
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !session?.user) {
+        throw new Error('Session expired. Please sign in again.');
+      }
+    }
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const operation = retry.operation({
+      retries: 3,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 5000
+    });
+
+    return new Promise((resolve, reject) => {
+      operation.attempt(async () => {
+        try {
+          const { data: sample, error: fetchError } = await supabase
+            .from('samples')
+            .select('storage_path')
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .single();
+
+          if (fetchError) {
+            if (operation.retry(fetchError)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          if (!sample) {
+            resolve(false);
+            return;
+          }
+
+          const { error: storageError } = await supabase.storage
+            .from('echobucket')
+            .remove([sample.storage_path]);
+
+          if (storageError) {
+            if (operation.retry(storageError)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          const { error: dbError } = await supabase
+            .from('samples')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+          if (dbError) {
+            if (operation.retry(dbError)) return;
+            reject(operation.mainError());
+            return;
+          }
+
+          resolve(true);
+        } catch (error) {
+          if (operation.retry(error as Error)) return;
+          reject(operation.mainError());
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error in deleteSample:', error);
+    return false;
   }
 }
